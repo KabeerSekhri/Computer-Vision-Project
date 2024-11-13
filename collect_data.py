@@ -11,17 +11,16 @@ if not os.path.exists(DATA_DIR): # Makes a directory 'data' if not existing
 
 
 def capture_sign(sign, dataset_size = 100):
-    cap = cv2.VideoCapture(0) 
+    cap = cv2.VideoCapture(0) # Initialise Webcam
 
-
-    if not os.path.exists(os.path.join(DATA_DIR, str(sign))): # Make directory inside 'data' labeled j
+    if not os.path.exists(os.path.join(DATA_DIR, str(sign))): # Make directory named as sign inside 'data' 
         os.makedirs(os.path.join(DATA_DIR, str(sign)))
 
     print('Collecting data for class {}'.format(sign))
 
     while True: # Used to allow user to be prepared for capture
-        ret, frame = cap.read() 
-        cv2.putText(frame, 'Press SpaceBar to begin capture', (100, 50), cv2.FONT_HERSHEY_PLAIN, 1.3, (255, 255, 255), 3, cv2.LINE_AA) 
+        success, frame = cap.read() 
+        cv2.putText(frame, 'Press SpaceBar to begin capture', (100, 50), cv2.FONT_HERSHEY_COMPLEX, 1.3, (255, 255, 255), 3, cv2.LINE_AA) 
         cv2.imshow('frame', frame) # Start capture
         if cv2.waitKey(1) & 0xFF == 32:
             break
@@ -39,7 +38,7 @@ def capture_sign(sign, dataset_size = 100):
     cv2.destroyAllWindows()
 
 sign = ""
-while not sign.strip():  # Continue looping while the input is empty
+while not sign.strip():  # Empty input not allowed
     sign = input("Enter the sign to capture: ")
     if not sign.strip():
         print("Input cannot be empty. Try again.")

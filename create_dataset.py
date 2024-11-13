@@ -1,27 +1,26 @@
-import mediapipe as mp
+import os
 import cv2
+import mediapipe as mediapipe
+import matplotlib.pyplot as plt
 
-mp_drawing = mp.solutions.drawing_utils
-mp_hands = mp.solutions.hands
+DATA_DIR = './data'
 
-cap = cv2.VideoCapture(0)
-with mp_hands.Hands() as hands:
-    while cap.isOpened():
-        success, image = cap.read()
-        if not success:
-            break
+for dir in os.listdir(DATA_DIR): # Go through each directory (sign)
+    dir_path = os.path.join(DATA_DIR, dir) 
+    if not os.path.isdir(dir_path): # Check if path is directory
+        continue
 
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        results = hands.process(image)
-        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+    for img_path in os.listdir(os.path.join(DATA_DIR,dir))[:1]: # Go through each image in directory
+        full_img_path = os.path.join(dir_path, img_path) 
+        img = cv2.imread(full_img_path)
 
-        if results.multi_hand_landmarks:
-            for hand_landmarks in results.multi_hand_landmarks:
-                mp_drawing.draw_landmarks(image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
-        cv2.imshow('MediaPipe Hands', image)
+        if img is None: # Ensure image is not empty
+            print(f"Warning: Could not load image at {full_img_path}")
+            continue
 
-        if cv2.waitKey(5) & 0xFF == 27:
-            break
-        
-cap.release()
-cv2.destroyAllWindows()
+        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+        plt.figure()
+        plt.imshow(img_rgb)
+
+plt.show()
