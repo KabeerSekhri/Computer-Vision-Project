@@ -1,15 +1,15 @@
-import pickle
+import pandas as pd
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 
-data_dict = pickle.load(open('./data.pickle', 'rb'))
+data = pd.read_csv('hand_landmarks.csv')
 
-data = np.asarray(data_dict['data'])
-labels = np.asarray(data_dict['labels'])
+X = data.iloc[:, 0:42] 
+Y = data.iloc[:, 42]   
 
-x_train, x_test, y_train, y_test = train_test_split(data, labels, test_size=0.2, shuffle=True)
+x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, shuffle=True, stratify=Y)
 
 model = RandomForestClassifier()
 
@@ -21,6 +21,4 @@ score = accuracy_score(y_predict, y_test)
 
 print(score*100)
 
-f = open('model.p', 'wb') # Create a file to store data
-pickle.dump({'model':model}, f)
-f.close()
+
