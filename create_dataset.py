@@ -21,7 +21,7 @@ for dir in os.listdir(DATA_DIR): # Go through each directory (sign)
     if not os.path.isdir(dir_path): # Check if path is directory
         continue
 
-    for img_path in os.listdir(os.path.join(DATA_DIR,dir))[-3:]: # Go through each image in directory
+    for img_path in os.listdir(os.path.join(DATA_DIR,dir)): # Go through each image in directory
         full_img_path = os.path.join(dir_path, img_path) 
         img = cv2.imread(full_img_path)
 
@@ -37,26 +37,33 @@ for dir in os.listdir(DATA_DIR): # Go through each directory (sign)
 
         results = hands.process(img_rgb)
         if results.multi_hand_landmarks: 
-            for hand_landmarks in results.multi_hand_landmarks: # Go through each hand tracked/captured
-                for i in range(len(hand_landmarks.landmark)): # For each landmark in image get X and Y coordinate
+            for hand_landmarks in results.multi_hand_landmarks:  # Go through each hand tracked/captured
+                X_co, Y_co = [], []  # Coordinates for the current hand
+                
+                for i in range(len(hand_landmarks.landmark)):  # For each landmark in image get X and Y coordinates
                     x = hand_landmarks.landmark[i].x
                     y = hand_landmarks.landmark[i].y
-
                     X_co.append(x)
                     Y_co.append(y)
                 
-                x_min = min(X_co)
-                y_min = min(Y_co)
-
+                # Normalize the landmarks for this hand
+                x_min, y_min = min(X_co), min(Y_co)
                 for i in range(len(X_co)):
                     X_co[i] -= x_min
                     Y_co[i] -= y_min
-
                     data_sub.append(X_co[i])
                     data_sub.append(Y_co[i])
-            
-            data.append(data_sub)
-            labels.append(dir)
+        
+        # Pad with zeros if only one hand is detected
+        if len(results.multi_hand_landmarks) == 1:
+            data_sub.extend([0] * 42)  # Pad 42 zeros for the second hand
+        
+        # Ensure the data has exactly 84 features (42 for each hand)
+        if len(data_sub) < 84:
+            data_sub.extend([0] * (84 - len(data_sub)))  # Pad with zeros if needed
+        
+        data.append(data_sub)
+        labels.append(dir)
 
 # len(data) = no. of imgs, len(data[i]) = no. of landmarks
 data_flattened = [np.ravel(sample) for sample in data] # Flatten each data_sub list in `data` and create a DataFrame
