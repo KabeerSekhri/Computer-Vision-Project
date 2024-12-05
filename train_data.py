@@ -1,47 +1,42 @@
-import pandas as pd
-import pickle
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
+import os
+import numpy as np
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
-# Load your dataset
-data = pd.read_csv('hand_landmarks.csv')
+# Paths
+DATA_DIR = './augmented_data'
+IMG_SIZE = (128, 128)
+BATCH_SIZE = 32
 
-# Ensure X has only 84 features (42 for each hand, for example)
-X = data.iloc[:, 0:84]  # Ensure you are using the first 84 columns for the features
-Y = data['label']
+# Data Generators
+datagen = ImageDataGenerator(rescale=1./255, validation_split=0.2)  # Normalize images
 
-# Split data into train and test sets
-x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, shuffle=True, stratify=Y)
+train_gen = datagen.flow_from_directory(
+    DATA_DIR, target_size=IMG_SIZE, batch_size=BATCH_SIZE, class_mode='categorical', subset='training'
+)
+val_gen = datagen.flow_from_directory(
+    DATA_DIR, target_size=IMG_SIZE, batch_size=BATCH_SIZE, class_mode='categorical', subset='validation'
+)
 
-# Save feature names (84 features)
-feature_names = [str(i) for i in range(84)]  # Example: feature names 0, 1, 2, ..., 83
+# Model
+model = Sequential([
+    Conv2D(32, (3, 3), activation='relu', input_shape=(IMG_SIZE[0], IMG_SIZE[1], 3)),
+    MaxPooling2D(pool_size=(2, 2)),
+    Conv2D(64, (3, 3), activation='relu'),
+    MaxPooling2D(pool_size=(2, 2)),
+    Flatten(),
+    Dense(128, activation='relu'),
+    Dropout(0.5),
+    Dense(train_gen.num_classes, activation='softmax')  # Classes from train_gen
+])
 
-# Train the model
-model = RandomForestClassifier()  # Example model
-model.fit(x_train, y_train)
+# Compile the Model
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
-# Save the model
-with open('trained_model.pkl', 'wb') as f:
-    pickle.dump(model, f)
+# Train the Model
+model.fit(train_gen, validation_data=val_gen, epochs=10)
 
-# Save feature names
-with open('feature_names.pkl', 'wb') as f:
-    pickle.dump(feature_names, f)
-
-# Make predictions
-y_predict = model.predict(x_test)
-
-# Calculate accuracy
-score = accuracy_score(y_predict, y_test)
-
-print('Accuracy:', score * 100)
-
-# Optional: Save the model again (redundant here)
-with open('trained_model.pkl', 'wb') as f:
-    pickle.dump(model, f)
-
-# Optional: Plot feature importances
-import matplotlib.pyplot as plt
-plt.bar(range(len(model.feature_importances_)), model.feature_importances_)
-plt.show()
+# Save the Model
+model.save('sign_model.keras')
