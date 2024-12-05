@@ -1,80 +1,90 @@
-import numpy as np
-import pandas as pd
-import pickle
 import cv2
-import mediapipe as mp
+import numpy as np
+import tensorflow as tf
+from keras.models import load_model
 
-# Load the trained model and feature names
-with open('trained_model.pkl', 'rb') as f:
-    model = pickle.load(f)
+# Load the pre-trained model
+model = load_model('sign_model.keras')
 
-with open('feature_names.pkl', 'rb') as f:
-    feature_names = pickle.load(f)
+# Get image dimensions for resizing
+def get_image_size():
+    img = cv2.imread('augmented_data/C/0_aug_0_rotation.jpg', 0)
+    return img.shape
 
-cap = cv2.VideoCapture(0)
+image_x, image_y = get_image_size()
 
-mp_hands = mp.solutions.hands
-mp_drawing = mp.solutions.drawing_utils
-mp_drawing_styles = mp.solutions.drawing_styles
+# Pre-process the image for prediction
+def keras_process_image(img):
+    img = cv2.resize(img, (image_x, image_y))
+    img = np.array(img, dtype=np.float32)
+    img = np.reshape(img, (1, image_x, image_y, 1))  # Add batch and channel dimensions
+    return img
 
-hands = mp_hands.Hands(static_image_mode=True, min_detection_confidence=0.3)
+# Make a prediction using the model
+def keras_predict(model, image):
+    processed = keras_process_image(image)
+    pred_probab = model.predict(processed)[0]
+    pred_class = list(pred_probab).index(max(pred_probab))
+    return max(pred_probab), pred_class
 
-signs_dict = {'C': 'C', 'L': 'L'}
+# Get the predicted text from the database
+def get_pred_text_from_db(pred_class):
+    # Dummy gesture names for example, replace with actual DB query
+    gesture_names = ["C", "L", "A", "B"]  # Example gesture classes
+    return gesture_names[pred_class]
 
-while True:
-    data_sub = []
-    success, frame = cap.read()
-
-    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    results = hands.process(frame_rgb)
+# Get the contour and threshold for the hand sign
+def get_img_contour_thresh(img):
+    img = cv2.flip(img, 1)  # Flip for mirror effect
+    imgHSV = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     
-    if results.multi_hand_landmarks:
-        for hand_landmarks in results.multi_hand_landmarks:
-            X_co, Y_co = [], []
-            for i in range(len(hand_landmarks.landmark)):
-                x = hand_landmarks.landmark[i].x
-                y = hand_landmarks.landmark[i].y
-                X_co.append(x)
-                Y_co.append(y)
-            
-            # Normalize the landmarks for this hand
-            x_min, y_min = min(X_co), min(Y_co)
-            for i in range(len(X_co)):
-                X_co[i] -= x_min
-                Y_co[i] -= y_min
-                data_sub.append(X_co[i])
-                data_sub.append(Y_co[i])
-        
-        # Pad with zeros if only one hand is detected
-        if len(results.multi_hand_landmarks) == 1:
-            data_sub.extend([0] * 42)  # Pad 42 zeros for the second hand
-        else:
-            # If no hand is detected, skip this frame
-            print("No hands detected. Skipping frame.")
-            continue
+    # Convert to grayscale and apply Gaussian blur for better contour detection
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+    _, thresh = cv2.threshold(blurred, 50, 255, cv2.THRESH_BINARY)
+    
+    contours, _ = cv2.findContours(thresh.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    return img, contours, thresh
 
-        # Ensure the data has exactly 84 features (42 for each hand)
-        if len(data_sub) < 84:
-            data_sub.extend([0] * (84 - len(data_sub)))  # Pad with zeros if needed
+# Get the prediction from the contour
+def get_pred_from_contour(contour, thresh):
+    x1, y1, w1, h1 = cv2.boundingRect(contour)
+    save_img = thresh[y1:y1 + h1, x1:x1 + w1]  # Extract the hand region
+    
+    # Pre-process the extracted hand image
+    pred_probab, pred_class = keras_predict(model, save_img)
+    if pred_probab * 100 > 70:  # Set a threshold for prediction confidence
+        text = get_pred_text_from_db(pred_class)
+        return text
+    return ""
 
-        # Create DataFrame with the feature names loaded during training
-        data_sub_df = pd.DataFrame([data_sub], columns=feature_names)
+# Main function to detect and display predictions
+def main():
+    cap = cv2.VideoCapture(0)
+    while True:
+        ret, img = cap.read()
+        if not ret:
+            break
+        img = cv2.resize(img, (640, 480))  # Resize to standard frame size
+        img, contours, thresh = get_img_contour_thresh(img)
 
-        print(data_sub_df)  # Debugging: Verify padded data
+        pred_text = ""
+        if len(contours) > 0:
+            contour = max(contours, key=cv2.contourArea)
+            if cv2.contourArea(contour) > 10000:  # Only consider large contours
+                pred_text = get_pred_from_contour(contour, thresh)
 
-        # Make the prediction
-        prediction = model.predict(data_sub_df)
+        # Display the predicted text
+        cv2.putText(img, f"Predicted: {pred_text}", (30, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
-        predicted_character = signs_dict[(prediction[0])]
+        # Show the frames
+        cv2.imshow("Hand Gesture Recognition", img)
 
-        cv2.putText(frame, f'Prediction: {predicted_character}', (10, 50),
-            cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
-        print(predicted_character)
-            
-    cv2.imshow('frame', frame)
-    cv2.waitKey(25)
-    if cv2.waitKey(1) & 0xFF == 32:
-        break
+        if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to quit
+            break
 
-cap.release()
-cv2.destroyAllWindows()
+    cap.release()
+    cv2.destroyAllWindows()
+
+if __name__ == "__main__":
+    main()
