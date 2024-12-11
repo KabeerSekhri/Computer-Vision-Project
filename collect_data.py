@@ -78,12 +78,14 @@ def capture_sign(sign, dataset_size=100):
                 cv2.putText(frame, f'Captured: {counter}/{dataset_size}', (50, 50),
                             cv2.FONT_HERSHEY_COMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
 
-        # Display the frame with the fixed box and the ROI
+        # Display the frame with the fixed box
         cv2.rectangle(frame, (BOX_X, BOX_Y), (BOX_X + BOX_W, BOX_Y + BOX_H), (0, 255, 0), 2)
         cv2.imshow('frame', frame)
-        cv2.imshow('ROI', roi)
 
-        if cv2.waitKey(1) & 0xFF == 27:  # Press 'Esc' to quit early
+        # Show the ROI mask in a separate window
+        cv2.imshow('HSV Mask', mask)
+
+        if cv2.waitKey(10) & 0xFF == 27:  # Press 'Esc' to quit early
             break
 
     cap.release()
@@ -96,4 +98,4 @@ while not sign.strip():  # Ensure non-empty input
     if not sign:
         print("Input cannot be empty. Try again.")
 
-capture_sign(sign)
+capture_sign(sign, dataset_size=50)

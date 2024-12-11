@@ -34,7 +34,7 @@ def keras_predict(model, image):
 # Get the predicted text from the database
 def get_pred_text_from_db(pred_class):
     # Dummy gesture names for example, replace with actual DB query
-    gesture_names = ["C", "L"]  # Example gesture classes
+    gesture_names = ["1","2","3","4","5"]  # Example gesture classes
     return gesture_names[pred_class]
 
 # Main function to detect and display predictions
