@@ -9,7 +9,7 @@ AUGMENTED_DIR = './augmented_data'
 if not os.path.exists(AUGMENTED_DIR):
     os.makedirs(AUGMENTED_DIR)
 
-augmentations_list = ["noise", "rotation", "flip","brightness","contrast","hue_sat","grayscale","shearing","scaling",
+augmentations_list = ["noise", "rotation", "flip","brightness","contrast","hue_sat","shearing","scaling",
                       "translation","gaussian", "salt_pep","cutout","perspective",]
 
 # Define augmentation functions
@@ -49,11 +49,6 @@ def augment_image(image):
         hsv[..., 0] = np.clip(hsv[..., 0] + random.randint(-15, 15), 0, 255)
         image = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
         return image, "hue_sat"
-
-    elif aug_type == "grayscale":
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)  # Convert back to 3 channels for consistency
-        return image, "grayscale"
 
     elif aug_type == "shearing":
         rows, cols, _ = image.shape

@@ -1,5 +1,6 @@
 import os
 import cv2
+import numpy as np
 
 DATA_DIR = './data'
 if not os.path.exists(DATA_DIR):  # Create the 'data' directory if it doesn't exist
@@ -9,21 +10,10 @@ if not os.path.exists(DATA_DIR):  # Create the 'data' directory if it doesn't ex
 BOX_X, BOX_Y = 800, 100  # Top-left corner of the box
 BOX_W, BOX_H = 400, 400  # Width and height of the box
 
+
 def capture_sign(sign, dataset_size=100):
     # Initialize webcam
     cap = cv2.VideoCapture(0)
-
-    # Get frame dimensions
-    frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    
-    # Calculate center of the screen
-    center_x, center_y = frame_width // 2, frame_height // 2
-    
-    # Calculate top-left corner of the box
-    BOX_X = center_x - (BOX_W // 2)
-    BOX_Y = center_y - (BOX_H // 2)
-
     if not os.path.exists(os.path.join(DATA_DIR, str(sign))):
         os.makedirs(os.path.join(DATA_DIR, str(sign)))
 
@@ -62,25 +52,43 @@ def capture_sign(sign, dataset_size=100):
         # Extract the region of interest (ROI) defined by the box
         roi = frame[BOX_Y:BOX_Y + BOX_H, BOX_X:BOX_X + BOX_W]
 
-        # Resize the ROI and save it in the original BGR format
-        roi_resized = cv2.resize(roi, (50, 50))
-        cv2.imwrite(os.path.join(DATA_DIR, str(sign), '{}.jpg'.format(counter)), roi_resized)
-        counter += 1
+        # Preprocessing: Convert to HSV and apply skin mask
+        hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+        lower_skin = np.array([0, 20, 70])  # Adjust skin color range
+        upper_skin = np.array([20, 255, 255])
+        mask = cv2.inRange(hsv, lower_skin, upper_skin)
+        mask = cv2.medianBlur(mask, 15)
 
-        # Display progress
-        cv2.putText(frame, f'Captured: {counter}/{dataset_size}', (50, 50),
-                    cv2.FONT_HERSHEY_COMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
+        # Find contours in the masked region
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        if contours:
+            largest_contour = max(contours, key=cv2.contourArea)
+            if cv2.contourArea(largest_contour) > 1000:  # Area threshold for valid signs
+                # Draw contours and bounding box for feedback
+                x, y, w, h = cv2.boundingRect(largest_contour)
+                cv2.rectangle(roi, (x, y), (x + w, y + h), (255, 0, 0), 2)
+
+                # Resize the hand region and save it
+                hand = mask[y:y + h, x:x + w]
+                hand_resized = cv2.resize(hand, (50, 50))
+                cv2.imwrite(os.path.join(DATA_DIR, str(sign), '{}.jpg'.format(counter)), hand_resized)
+                counter += 1
+
+                # Display progress
+                cv2.putText(frame, f'Captured: {counter}/{dataset_size}', (50, 50),
+                            cv2.FONT_HERSHEY_COMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
 
         # Display the frame with the fixed box and the ROI
         cv2.rectangle(frame, (BOX_X, BOX_Y), (BOX_X + BOX_W, BOX_Y + BOX_H), (0, 255, 0), 2)
         cv2.imshow('frame', frame)
         cv2.imshow('ROI', roi)
 
-        if cv2.waitKey(500) & 0xFF == 27:  # Press 'Esc' to quit early
+        if cv2.waitKey(1) & 0xFF == 27:  # Press 'Esc' to quit early
             break
 
     cap.release()
     cv2.destroyAllWindows()
+
 
 sign = ""
 while not sign.strip():  # Ensure non-empty input
@@ -88,4 +96,4 @@ while not sign.strip():  # Ensure non-empty input
     if not sign:
         print("Input cannot be empty. Try again.")
 
-capture_sign(sign, dataset_size=25)
+capture_sign(sign)
