@@ -37,6 +37,7 @@ model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accur
 
 # Train the Model
 model.fit(train_gen, validation_data=val_gen, epochs=10)
+print(train_gen.class_indices)
 
 # Save the Model
 model.save('sign_model.keras')
