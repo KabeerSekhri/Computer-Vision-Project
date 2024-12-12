@@ -65,7 +65,7 @@ def augment_image(image):
 
     elif aug_type == "translation":
         rows, cols, _ = image.shape
-        tx, ty = random.randint(-50, 50), random.randint(-50, 50)
+        tx, ty = random.randint(-25, 25), random.randint(-25, 25)
         M = np.float32([[1, 0, tx], [0, 1, ty]])
         image = cv2.warpAffine(image, M, (cols, rows))
         return image, "translation"

@@ -85,7 +85,7 @@ def capture_sign(sign, dataset_size=100):
         # Show the ROI mask in a separate window
         cv2.imshow('HSV Mask', mask)
 
-        if cv2.waitKey(10) & 0xFF == 27:  # Press 'Esc' to quit early
+        if cv2.waitKey(10) & 0xFF == 32:  # Press 'Esc' to quit early
             break
 
     cap.release()
