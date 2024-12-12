@@ -41,7 +41,7 @@ def cnn_model():
     return model
 
 # Callbacks
-filepath = 'sign_model.keras'
+filepath = 'sign_model.h5'
 checkpoint1 = ModelCheckpoint(filepath, monitor='val_accuracy', verbose=1, save_best_only=True, mode='max')
 callbacks_list = [checkpoint1]
 
@@ -53,4 +53,4 @@ model.summary()
 model.fit(train_gen, validation_data=val_gen, epochs=10, callbacks=callbacks_list)
 
 # Save the final Model
-model.save('sign_model.keras')
+model.save('sign_model.h5')

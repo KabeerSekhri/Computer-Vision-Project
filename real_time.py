@@ -3,7 +3,7 @@ import numpy as np
 from keras.models import load_model
 
 # Load the pre-trained model
-model = load_model('sign_model.keras')
+model = load_model('sign_model.h5')
 
 # Image dimensions for prediction
 image_x, image_y = 128, 128
@@ -59,14 +59,34 @@ def main():
 
         # Median blur for noise reduction
         mask = cv2.medianBlur(mask, 15)
+        pred_probab, pred_class = None, None
 
-        # Use the mask for prediction
-        pred_probab, pred_class = keras_predict(model, mask)
+        
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        if contours:
+            largest_contour = max(contours, key=cv2.contourArea)
+            if cv2.contourArea(largest_contour) > 1000:  # Area threshold for valid signs
+                #Draw contours and bounding box for feedback
+                x, y, w, h = cv2.boundingRect(largest_contour)
+                cv2.rectangle(roi, (x, y), (x + w, y + h), (255, 0, 0), 2)
+
+                 #Resize the hand region and save it
+                hand = mask[y:y + h, x:x + w]
+                hand_resized = cv2.resize(hand, (50, 50))
+                # Use the mask for prediction
+                pred_probab, pred_class = keras_predict(model, hand_resized)
+        #pred_probab, pred_class = keras_predict(model, mask)
+
+        if pred_probab is None or pred_class is None:
+            print("Prediction could not be made due to lack of valid input.")
+
+        
 
         # Set a threshold for prediction confidence
         pred_text = ""
-        if pred_probab * 100 > 70:  # Prediction confidence threshold
-            pred_text = get_pred_text_from_db(pred_class)
+        if pred_probab != None:
+            if pred_probab * 100 > 70:  # Prediction confidence threshold
+                pred_text = get_pred_text_from_db(pred_class)
 
         # Draw the fixed box and the prediction text on the frame
         cv2.rectangle(img, (BOX_X, BOX_Y), (BOX_X + BOX_W, BOX_Y + BOX_H), (0, 255, 0), 2)
