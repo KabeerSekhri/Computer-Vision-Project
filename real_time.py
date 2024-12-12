@@ -3,7 +3,7 @@ import numpy as np
 from keras.models import load_model
 
 # Load the pre-trained model
-model = load_model('sign_model_alpha.keras')
+model = load_model('sign_model_alpha_comp.keras')
 
 # Image dimensions for prediction
 image_x, image_y = 128, 128
@@ -34,7 +34,8 @@ def keras_predict(model, image):
 # Get the predicted text from the database
 def get_pred_text_from_db(pred_class):
     # Dummy gesture names for example, replace with actual DB query
-    gesture_names = ["A","B","C","D","E"]  # Example gesture classes
+    gesture_names = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P",
+                     "Q","R","S","T","U","V","W","X","Y","Z"]  # Example gesture classes
     return gesture_names[pred_class]
 
 # Main function to detect and display predictions

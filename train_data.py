@@ -41,7 +41,7 @@ def cnn_model():
     return model
 
 # Callbacks
-filepath = 'sign_model_alpha.keras'
+filepath = 'sign_model_alpha_comp.keras'
 checkpoint1 = ModelCheckpoint(filepath, monitor='val_accuracy', verbose=1, save_best_only=True, mode='max')
 callbacks_list = [checkpoint1]
 
