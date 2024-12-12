@@ -53,12 +53,32 @@ def main():
 
         # Convert ROI to HSV and create a binary mask
         hsv_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+
         lower_skin = np.array([0, 20, 70])  # Adjust skin color range
         upper_skin = np.array([20, 255, 255])
-        mask = cv2.inRange(hsv_roi, lower_skin, upper_skin)
+        #mask = cv2.inRange(hsv_roi, lower_skin, upper_skin)
 
         # Median blur for noise reduction
-        mask = cv2.medianBlur(mask, 15)
+        #mask = cv2.medianBlur(mask, 15)
+        hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+
+        # Step 2: Split the channels
+        h, s, v = cv2.split(hsv)
+
+        #Step 3: Apply CLAHE to the V channel (Value channel)
+        clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+        v = clahe.apply(v)
+
+        # Step 4: Merge the channels back together
+        hsv_enhanced = cv2.merge([h, s, v])
+        mask = cv2.inRange(hsv_enhanced, lower_skin, upper_skin)
+        mask = cv2.GaussianBlur(mask, (5, 5), 0)
+
+        # Apply morphological operations to remove small noise
+        kernel = np.ones((5, 5), np.uint8)
+        mask = cv2.erode(mask, kernel, iterations=1)
+        mask = cv2.dilate(mask, kernel, iterations=2)
+
         pred_probab, pred_class = None, None
 
         
@@ -73,6 +93,7 @@ def main():
                  #Resize the hand region and save it
                 hand = mask[y:y + h, x:x + w]
                 hand_resized = cv2.resize(hand, (50, 50))
+                cv2.drawContours(roi, largest_contour,-1,(255, 0, 255),5)
                 # Use the mask for prediction
                 pred_probab, pred_class = keras_predict(model, hand_resized)
         #pred_probab, pred_class = keras_predict(model, mask)
