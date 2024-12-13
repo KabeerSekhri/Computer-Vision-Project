@@ -7,8 +7,8 @@ if not os.path.exists(DATA_DIR):  # Create the 'data' directory if it doesn't ex
     os.makedirs(DATA_DIR)
 
 # Define constants for the box
-BOX_X, BOX_Y = 800, 100  # Top-left corner of the box
 BOX_W, BOX_H = 400, 400  # Width and height of the box
+#BOX_X, BOX_Y = 800, 100  # Top-left corner of the box
 
 
 def capture_sign(sign, dataset_size=100):
@@ -19,12 +19,19 @@ def capture_sign(sign, dataset_size=100):
 
     print('Collecting data for class {}'.format(sign))
 
+
     while True:  # Allow user to prepare
         success, frame = cap.read()
         if not success:
             print("Failed to access the camera.")
             break
 
+        frame_h, frame_w, _ = frame.shape
+
+        # Calculate the top-left corner of the centered ROI box
+        BOX_X = ((frame_w - BOX_W) // 2)
+        BOX_Y = ((frame_h - BOX_H) // 2)+50
+        
         # Flip for mirror effect
         frame = cv2.flip(frame, 1)
 

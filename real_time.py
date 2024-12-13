@@ -9,20 +9,19 @@ model = load_model('sign_model_alpha_comp.keras')
 image_x, image_y = 128, 128
 
 # Define constants for the box
-BOX_X, BOX_Y = 800, 100  # Top-left corner of the box
 BOX_W, BOX_H = 400, 400  # Width and height of the box
 
 # Pre-process the image for prediction
-def keras_process_image(img):
+def keras_process_image(frame):
     # Resize to (128, 128)
-    img = cv2.resize(img, (image_x, image_y))
+    frame = cv2.resize(frame, (image_x, image_y))
     
     # Normalize the image
-    img = np.array(img, dtype=np.float32) / 255.0
+    frame = np.array(frame, dtype=np.float32) / 255.0
 
     # Add batch and channel dimensions (1, 128, 128, 1)
-    img = np.reshape(img, (1, image_x, image_y, 1))
-    return img
+    frame = np.reshape(frame, (1, image_x, image_y, 1))
+    return frame
 
 # Make a prediction using the model
 def keras_predict(model, image):
@@ -33,24 +32,30 @@ def keras_predict(model, image):
 
 # Get the predicted text from the database
 def get_pred_text_from_db(pred_class):
-    # Dummy gesture names for example, replace with actual DB query
-    gesture_names = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P",
-                     "Q","R","S","T","U","V","W","X","Y","Z"]  # Example gesture classes
-    return gesture_names[pred_class]
+    # Make the array of signs
+    sign_names = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P",
+                     "Q","R","S","T","U","V","W","X","Y","Z"]  
+    return sign_names[pred_class]
 
 # Main function to detect and display predictions
 def main():
     cap = cv2.VideoCapture(0)
     while True:
-        ret, img = cap.read()
+        ret, frame = cap.read()
         if not ret:
             break
 
         # Flip the frame for a mirror effect
-        img = cv2.flip(img, 1)
+        frame = cv2.flip(frame, 1)
+
+        frame_h, frame_w, _ = frame.shape
+
+        # Calculate the top-left corner of the centered ROI box
+        BOX_X = ((frame_w - BOX_W) // 2)
+        BOX_Y = ((frame_h - BOX_H) // 2)+50
 
         # Extract the region of interest (ROI) defined by the box
-        roi = img[BOX_Y:BOX_Y + BOX_H, BOX_X:BOX_X + BOX_W]
+        roi = frame[BOX_Y:BOX_Y + BOX_H, BOX_X:BOX_X + BOX_W]
 
         # Convert ROI to HSV and create a binary mask
         hsv_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
@@ -90,16 +95,16 @@ def main():
                 pred_text = get_pred_text_from_db(pred_class)
 
         # Draw the fixed box and the prediction text on the frame
-        cv2.rectangle(img, (BOX_X, BOX_Y), (BOX_X + BOX_W, BOX_Y + BOX_H), (0, 255, 0), 2)
-        cv2.putText(img, f"Predicted: {pred_text}", (30, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+        cv2.rectangle(frame, (BOX_X, BOX_Y), (BOX_X + BOX_W, BOX_Y + BOX_H), (0, 255, 0), 2)
+        cv2.putText(frame, f"Predicted: {pred_text}", (30, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
         # Show the processed mask and the main frame
-        cv2.imshow("Hand Gesture Recognition", img)
+        cv2.imshow("Hand Sign Recognition", frame)
         cv2.imshow("Mask ROI", mask)
 
         # Check for key presses
         key = cv2.waitKey(1) & 0xFF
-        if key == 27:  # Press 'Esc' to quit the program
+        if key == 32:  # Press 'Esc' to quit the program
             break
 
     cap.release()
